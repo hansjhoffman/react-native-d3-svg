@@ -20,102 +20,99 @@ const data = [
   { x: new Date(2019, 5, 25), y: 300 },
 ];
 
-const scaleX = scaleTime()
-  .domain([data[0].x, data[data.length - 1].x])
-  .range([0, WIDTH]);
+export default function App() {
+  const cursorRef = React.useRef(null);
+  const labelRef = React.useRef(null);
 
-const scaleY = scaleLinear()
-  .domain([data[0].y, data[data.length - 1].y])
-  .range([HEIGHT - VERTICAL_PADDING, VERTICAL_PADDING]);
+  // eslint-disable-next-line no-unused-vars
+  const [x, _] = React.useState(new Animated.Value(0));
 
-const scaleLabel = scaleQuantile()
-  .domain([data[0].y, data[data.length - 1].y])
-  .range([0, 200, 300]);
+  const scaleX = scaleTime()
+    .domain([data[0].x, data[data.length - 1].x])
+    .range([0, WIDTH]);
 
-const line = shape
-  .line()
-  .x(d => scaleX(d.x))
-  .y(d => scaleY(d.y))
-  .curve(shape.curveBasis)(data);
+  const scaleY = scaleLinear()
+    .domain([data[0].y, data[data.length - 1].y])
+    .range([HEIGHT - VERTICAL_PADDING, VERTICAL_PADDING]);
 
-const properties = path.svgPathProperties(line);
+  const scaleLabel = scaleQuantile()
+    .domain([data[0].y, data[data.length - 1].y])
+    .range([0, 200, 300]);
 
-const lineLength = properties.getTotalLength();
+  const line = shape
+    .line()
+    .x(d => scaleX(d.x))
+    .y(d => scaleY(d.y))
+    .curve(shape.curveBasis)(data);
 
-export default class App extends React.Component {
-  state = {
-    x: new Animated.Value(0),
-  };
+  const properties = path.svgPathProperties(line);
 
-  cursorRef = React.createRef();
-  labelRef = React.createRef();
+  const lineLength = properties.getTotalLength();
 
-  componentDidMount() {
-    this.state.x.addListener(({ value }) => this.moveCursor(value));
-    this.moveCursor(0);
-  }
-
-  moveCursor(value) {
+  function moveCursor(value) {
     const { x, y } = properties.getPointAtLength(lineLength - value);
 
-    if (this.cursorRef.current) {
-      this.cursorRef.current.setNativeProps({ top: y - CURSOR_RADIUS, left: x - CURSOR_RADIUS });
+    if (cursorRef.current) {
+      cursorRef.current.setNativeProps({ top: y - CURSOR_RADIUS, left: x - CURSOR_RADIUS });
     }
 
-    if (this.labelRef.current) {
+    if (labelRef.current) {
       const label = scaleLabel(scaleY.invert(y));
-      this.labelRef.current.setNativeProps({ text: `${label}` });
+      labelRef.current.setNativeProps({ text: `${label}` });
     }
   }
 
-  render() {
-    const { x } = this.state;
+  const translateX = x.interpolate({
+    inputRange: [0, lineLength],
+    outputRange: [WIDTH - LABEL_WIDTH, 0],
+    extrapolate: "clamp",
+  });
 
-    const translateX = x.interpolate({
-      inputRange: [0, lineLength],
-      outputRange: [WIDTH - LABEL_WIDTH, 0],
-      extrapolate: "clamp",
-    });
+  React.useEffect(() => {
+    x.addListener(({ value }) => moveCursor(value));
+    moveCursor(0);
 
-    return (
-      <View style={styles.container}>
-        <Svg height={HEIGHT} width={WIDTH}>
-          <Defs>
-            <LinearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="gradient">
-              <Stop stopColor="#cde3f8" offset="0%" />
-              <Stop stopColor="#eef6fd" offset="80%" />
-              <Stop stopColor="#feffff" offset="100%" />
-            </LinearGradient>
-          </Defs>
-          <Path d={line} fill="transparent" stroke="#367be2" strokeWidth={5} />
-          <Path d={`${line} L ${WIDTH} ${HEIGHT} L 0 ${HEIGHT}`} fill="url(#gradient)" />
-          <View ref={this.cursorRef} style={styles.cursor}></View>
-        </Svg>
-        <Animated.View style={[styles.label, { transform: [{ translateX }] }]}>
-          <TextInput ref={this.labelRef} style={styles.labelText} />
-        </Animated.View>
-        <Animated.ScrollView
-          style={StyleSheet.absoluteFill}
-          contentContainerStyle={{ width: lineLength * 2 }}
-          showsHorizontalScrollIndicator={false}
-          scrollEventThrottle={16}
-          bounces={false}
-          onScroll={Animated.event(
-            [
-              {
-                nativeEvent: {
-                  contentOffset: { x },
-                },
+    return () => x.removeListener();
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <Svg height={HEIGHT} width={WIDTH}>
+        <Defs>
+          <LinearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="gradient">
+            <Stop stopColor="#cde3f8" offset="0%" />
+            <Stop stopColor="#eef6fd" offset="80%" />
+            <Stop stopColor="#feffff" offset="100%" />
+          </LinearGradient>
+        </Defs>
+        <Path d={line} fill="transparent" stroke="#367be2" strokeWidth={5} />
+        <Path d={`${line} L ${WIDTH} ${HEIGHT} L 0 ${HEIGHT}`} fill="url(#gradient)" />
+        <View ref={cursorRef} style={styles.cursor}></View>
+      </Svg>
+      <Animated.View style={[styles.label, { transform: [{ translateX }] }]}>
+        <TextInput ref={labelRef} style={styles.labelText} />
+      </Animated.View>
+      <Animated.ScrollView
+        style={StyleSheet.absoluteFill}
+        contentContainerStyle={{ width: lineLength * 2 }}
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        bounces={false}
+        onScroll={Animated.event(
+          [
+            {
+              nativeEvent: {
+                contentOffset: { x },
               },
-            ],
-            { useNativeDriver: true },
-          )}
-          horizontal
-        />
-        <Text style={styles.monthText}>September</Text>
-      </View>
-    );
-  }
+            },
+          ],
+          { useNativeDriver: true },
+        )}
+        horizontal
+      />
+      <Text style={styles.monthText}>September</Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
