@@ -6,5 +6,6 @@ Show how using SVGs in React Native can work
 
 ## Resources
 - https://www.youtube.com/watch?v=9Yh5AV9eNKk
+- https://www.youtube.com/watch?v=e3AooTp6AYc
 - https://www.npmjs.com/package/svg-path-properties
 - https://github.com/react-native-community/react-native-svg
